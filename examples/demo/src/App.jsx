@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import {persist, createJSONStorage} from 'zustand/middleware'
 import CodePreview from './components/CodePreview'
 import Details from './components/Details'
 import Scene from './components/Scene'
@@ -65,24 +66,30 @@ const proxy = (config) => (set, get, api) => {
 }
 
 
-const useStore = create(proxy((set) => {
+const useStore = create(persist((set) => {
   return {
     count: 1,
-    // inc: () => set((state) => ({ count: state.count + 1 })),
+    setCount: () => set((state) => ({ count: state.count + 1 })),
   }
+}, {
+  name: 'count',
+  storage: createJSONStorage(() => sessionStorage),
 }))
 
 function Counter() {
-  const {count, $state} = useStore()
+  const {count, $state, setCount} = useStore()
+  console.log('render: ', count);
 
   return (
     <div className="counter">
       <span>{count}</span>
       <button onClick={() => {
-        console.log(`before set,count 是${count}`)
-        $state.count = count + 1;
-        console.log(`after set,count 是${$state.count}`)
-        console.log(`getState 函数中是${useStore.getState().count}`)
+        setCount()
+        // console.log(`before set,count 是${count}`)
+        // $state.count = count + 1;
+        // console.log(`after set,count 是${$state.count}`)
+        // console.log(`getState 函数中是${useStore.getState().count}`)
+        // $state.count = 10;
       }}>one up</button>
     </div>
   )
