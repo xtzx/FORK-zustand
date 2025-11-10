@@ -68,26 +68,6 @@ type Create = {
 }
 
 
-// useStore Hook 的实现
-// 使用 React.useSyncExternalStore 实现外部状态订阅
-export function useStore<TState, StateSlice>(
-  api: ReadonlyStoreApi<TState>,
-  selector: (state: TState) => StateSlice = identity as any,
-) {
-  // 使用 useSyncExternalStore 订阅外部状态
-  // 第一个参数：订阅函数
-  // 第二个参数：获取当前状态的函数
-  // 第三个参数：获取初始状态的函数（用于服务端渲染）
-  const slice = React.useSyncExternalStore(
-    api.subscribe,
-    () => selector(api.getState()),
-    () => selector(api.getInitialState()),
-  )
-  // 使用 useDebugValue 在 React DevTools 中显示当前状态
-  React.useDebugValue(slice)
-  return slice
-}
-
 // createImpl 是实际的创建函数实现
 const createImpl = <T>(createState: StateCreator<T, [], []>) => {
   // 使用 vanilla 的 createStore 创建基础 store
