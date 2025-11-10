@@ -3,6 +3,9 @@ title: Setup with Next.js
 nav: 17
 ---
 
+> [!NOTE]
+> We will be updating this guide soon based on our discussion in https://github.com/pmndrs/zustand/discussions/2740.
+
 [Next.js](https://nextjs.org) is a popular server-side rendering framework for React that presents
 some unique challenges for using Zustand properly.
 Keep in mind that Zustand store is a global
@@ -15,7 +18,7 @@ These challenges include:
   and again on the client. Having different outputs on both the client and the server will result
   in "hydration errors." The store will have to be initialized on the server and then
   re-initialized on the client with the same data in order to avoid that. Please read more about
-  that in our [SSR and Hydration](./ssr-and-hydration) guide.
+  that in our [SSR and Hydration](./ssr-and-hydration.md) guide.
 - **SPA routing friendly:** Next.js supports a hybrid model for client side routing, which means
   that in order to reset a store, we need to initialize it at the component level using a
   `Context`.

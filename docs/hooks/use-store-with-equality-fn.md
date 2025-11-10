@@ -8,6 +8,10 @@ nav: 29
 `useStore`. However, it offers a way to define a custom equality check. This allows for more
 granular control over when components re-render, improving performance and responsiveness.
 
+> [!IMPORTANT]
+> In order to use `useStoreWithEqualityFn` from `zustand/traditional` you need to install
+> `use-sync-external-store` library due to `zustand/traditional` relies on `useSyncExternalStoreWithSelector`.
+
 ```js
 const someState = useStoreWithEqualityFn(store, selectorFn, equalityFn)
 ```
@@ -16,7 +20,7 @@ const someState = useStoreWithEqualityFn(store, selectorFn, equalityFn)
   - [Signature](#signature)
 - [Reference](#reference)
 - [Usage](#usage)
-  - [Use a vanilla store in React](#use-a-vanilla-store-in-react)
+  - [Using a global vanilla store in React](#using-a-global-vanilla-store-in-react)
   - [Using dynamic vanilla stores in React](#using-dynamic-global-vanilla-stores-in-react)
   - [Using scoped (non-global) vanilla store in React](#using-scoped-non-global-vanilla-store-in-react)
   - [Using dynamic scoped (non-global) vanilla stores in React](#using-dynamic-scoped-non-global-vanilla-stores-in-react)
@@ -705,7 +709,7 @@ given tab.
 
 ```tsx
 const useCounterStore = <U,>(
-  currentTabIndex: number,
+  key: string,
   selector: (state: CounterStore) => U,
 ) => {
   const stores = useContext(CounterStoresContext)
@@ -715,15 +719,11 @@ const useCounterStore = <U,>(
   }
 
   const getOrCreateCounterStoreByKey = useCallback(
-    () => createCounterStoreFactory(stores),
+    (key: string) => createCounterStoreFactory(stores!)(key),
     [stores],
   )
 
-  return useStoreWithEqualityFn(
-    getOrCreateCounterStoreByKey(`tab-${currentTabIndex}`),
-    selector,
-    shallow,
-  )
+  return useStore(getOrCreateCounterStoreByKey(key), selector)
 }
 ```
 

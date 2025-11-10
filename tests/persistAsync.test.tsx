@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 import { StrictMode, useEffect } from 'react'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -81,8 +83,10 @@ describe('persist middleware with async configuration', () => {
       </StrictMode>,
     )
 
-    await screen.findByText('count: 0, name: empty')
-    await screen.findByText('count: 42, name: test-storage')
+    expect(await screen.findByText('count: 0, name: empty')).toBeInTheDocument()
+    expect(
+      await screen.findByText('count: 42, name: test-storage'),
+    ).toBeInTheDocument()
     expect(onRehydrateStorageSpy).toBeCalledWith(
       { count: 42, name: 'test-storage' },
       undefined,
@@ -119,7 +123,7 @@ describe('persist middleware with async configuration', () => {
       </StrictMode>,
     )
 
-    await screen.findByText('count: 0')
+    expect(await screen.findByText('count: 0')).toBeInTheDocument()
     await waitFor(() => {
       expect(onRehydrateStorageSpy).toBeCalledWith(
         undefined,
@@ -157,14 +161,16 @@ describe('persist middleware with async configuration', () => {
       </StrictMode>,
     )
 
-    await screen.findByText('count: 0')
+    expect(await screen.findByText('count: 0')).toBeInTheDocument()
     await waitFor(() => {
       expect(onRehydrateStorageSpy).toBeCalledWith({ count: 0 }, undefined)
     })
 
     // Write something to the store
-    act(() => useBoundStore.setState({ count: 42 }))
-    await screen.findByText('count: 42')
+    act(() => {
+      useBoundStore.setState({ count: 42 })
+    })
+    expect(await screen.findByText('count: 42')).toBeInTheDocument()
     expect(setItemSpy).toBeCalledWith(
       'test-storage',
       JSON.stringify({ state: { count: 42 }, version: 0 }),
@@ -187,7 +193,7 @@ describe('persist middleware with async configuration', () => {
       </StrictMode>,
     )
 
-    await screen.findByText('count: 42')
+    expect(await screen.findByText('count: 42')).toBeInTheDocument()
     await waitFor(() => {
       expect(onRehydrateStorageSpy2).toBeCalledWith({ count: 42 }, undefined)
     })
@@ -229,8 +235,8 @@ describe('persist middleware with async configuration', () => {
       </StrictMode>,
     )
 
-    await screen.findByText('count: 0')
-    await screen.findByText('count: 99')
+    expect(await screen.findByText('count: 0')).toBeInTheDocument()
+    expect(await screen.findByText('count: 99')).toBeInTheDocument()
     expect(migrateSpy).toBeCalledWith({ count: 42 }, 12)
     expect(setItemSpy).toBeCalledWith(
       'test-storage',
@@ -291,8 +297,8 @@ describe('persist middleware with async configuration', () => {
       </StrictMode>,
     )
 
-    await screen.findByText('count: 42')
-    await screen.findByText('name: test')
+    expect(await screen.findByText('count: 42')).toBeInTheDocument()
+    expect(await screen.findByText('name: test')).toBeInTheDocument()
 
     expect(useBoundStore.getState()).toEqual(
       expect.objectContaining({
@@ -302,7 +308,7 @@ describe('persist middleware with async configuration', () => {
     )
   })
 
-  it('can correclty handle a missing migrate function', async () => {
+  it('can correctly handle a missing migrate function', async () => {
     console.error = vi.fn()
     const onRehydrateStorageSpy = vi.fn()
     const storage = {
@@ -335,7 +341,7 @@ describe('persist middleware with async configuration', () => {
       </StrictMode>,
     )
 
-    await screen.findByText('count: 0')
+    expect(await screen.findByText('count: 0')).toBeInTheDocument()
 
     await waitFor(() => {
       expect(console.error).toHaveBeenCalled()
@@ -383,7 +389,7 @@ describe('persist middleware with async configuration', () => {
       </StrictMode>,
     )
 
-    await screen.findByText('count: 0')
+    expect(await screen.findByText('count: 0')).toBeInTheDocument()
     await waitFor(() => {
       expect(onRehydrateStorageSpy).toBeCalledWith(
         undefined,
@@ -432,7 +438,7 @@ describe('persist middleware with async configuration', () => {
       </StrictMode>,
     )
 
-    await screen.findByText('count: 1')
+    expect(await screen.findByText('count: 1')).toBeInTheDocument()
 
     // The 'onRehydrateStorage' spy is invoked prior to rehydration, so it should
     // be passed the default state.
@@ -475,7 +481,7 @@ describe('persist middleware with async configuration', () => {
       </StrictMode>,
     )
 
-    await screen.findByText('count: 0')
+    expect(await screen.findByText('count: 0')).toBeInTheDocument()
     await waitFor(() => {
       expect(onRehydrateStorageSpy).toBeCalledWith(
         { count: 1, unstorableMethod },
@@ -527,7 +533,7 @@ describe('persist middleware with async configuration', () => {
       </StrictMode>,
     )
 
-    await screen.findByText('count: 1')
+    expect(await screen.findByText('count: 1')).toBeInTheDocument()
     expect(useBoundStore.getState()).toEqual({
       count: 1,
       actions: {
@@ -566,7 +572,7 @@ describe('persist middleware with async configuration', () => {
       </StrictMode>,
     )
 
-    await screen.findByText('count: 1')
+    expect(await screen.findByText('count: 1')).toBeInTheDocument()
     expect(useBoundStore.getState()).toEqual({
       count: 1,
     })
@@ -701,7 +707,7 @@ describe('persist middleware with async configuration', () => {
       </StrictMode>,
     )
 
-    await screen.findByText('count: 2')
+    expect(await screen.findByText('count: 2')).toBeInTheDocument()
     expect(useBoundStore.getState().count).toEqual(2)
   })
 
@@ -742,7 +748,7 @@ describe('persist middleware with async configuration', () => {
       </StrictMode>,
     )
 
-    await screen.findByText('map: bar')
+    expect(await screen.findByText('map: bar')).toBeInTheDocument()
     expect(onRehydrateStorageSpy).toBeCalledWith(
       { map: new Map([['foo', 'bar']]) },
       undefined,
@@ -779,15 +785,17 @@ describe('persist middleware with async configuration', () => {
       </StrictMode>,
     )
 
-    await screen.findByText('map-content:')
+    expect(await screen.findByText('map-content:')).toBeInTheDocument()
     await waitFor(() => {
       expect(onRehydrateStorageSpy).toBeCalledWith({ map }, undefined)
     })
 
     // Write something to the store
     const updatedMap = new Map(map).set('foo', 'bar')
-    act(() => useBoundStore.setState({ map: updatedMap }))
-    await screen.findByText('map-content: bar')
+    act(() => {
+      useBoundStore.setState({ map: updatedMap })
+    })
+    expect(await screen.findByText('map-content: bar')).toBeInTheDocument()
 
     expect(setItemSpy).toBeCalledWith(
       'test-storage',
@@ -814,7 +822,7 @@ describe('persist middleware with async configuration', () => {
       </StrictMode>,
     )
 
-    await screen.findByText('map-content: bar')
+    expect(await screen.findByText('map-content: bar')).toBeInTheDocument()
     await waitFor(() => {
       expect(onRehydrateStorageSpy2).toBeCalledWith(
         { map: updatedMap },

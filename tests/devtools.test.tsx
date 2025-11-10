@@ -98,7 +98,11 @@ const extensionConnector = {
         subscribers.push(f)
         return () => {}
       }),
-      unsubscribe: vi.fn(),
+      unsubscribe: vi.fn(() => {
+        connectionMap.delete(
+          areNameUndefinedMapsNeeded ? options.testConnectionId : key,
+        )
+      }),
       send: vi.fn(),
       init: vi.fn(),
       error: vi.fn(),
@@ -185,6 +189,37 @@ describe('When state changes...', () => {
     expect(connection.send).toHaveBeenLastCalledWith(
       { type: 'anonymous' },
       { count: 5, foo: 'baz' },
+    )
+  })
+})
+
+describe('When state changes with automatic setter inferring...', () => {
+  it("sends { type: setStateName || 'setCount`, ...rest } as the action with current state", async () => {
+    const options = {
+      name: 'testOptionsName',
+      enabled: true,
+    }
+
+    const api = createStore<{
+      count: number
+      setCount: (count: number) => void
+    }>()(
+      devtools(
+        (set) => ({
+          count: 0,
+          setCount: (newCount: number) => {
+            set({ count: newCount })
+          },
+        }),
+        options,
+      ),
+    )
+
+    api.getState().setCount(10)
+    const [connection] = getNamedConnectionApis(options.name)
+    expect(connection.send).toHaveBeenLastCalledWith(
+      { type: expect.stringMatching(/^(Object\.setCount|anonymous)$/) },
+      { count: 10, setCount: expect.any(Function) },
     )
   })
 })
@@ -634,25 +669,25 @@ describe('different envs', () => {
   })
 
   it('works in non-browser env', async () => {
-    const originalWindow = global.window
-    global.window = undefined as any
+    const originalWindow = globalThis.window
+    globalThis.window = undefined as any
 
     expect(() => {
       createStore(devtools(() => ({ count: 0 }), { enabled: true }))
     }).not.toThrow()
 
-    global.window = originalWindow
+    globalThis.window = originalWindow
   })
 
   it('works in react native env', async () => {
-    const originalWindow = global.window
-    global.window = {} as any
+    const originalWindow = globalThis.window
+    globalThis.window = {} as any
 
     expect(() => {
       createStore(devtools(() => ({ count: 0 }), { enabled: true }))
     }).not.toThrow()
 
-    global.window = originalWindow
+    globalThis.window = originalWindow
   })
 })
 
@@ -2446,5 +2481,62 @@ describe('when create devtools was called multiple times with `name` and `store`
         })
       })
     })
+  })
+})
+
+describe('cleanup', () => {
+  it('should unsubscribe from devtools when cleanup is called', async () => {
+    const options = { name: 'test' }
+    const store = createStore(devtools(() => ({ count: 0 }), options))
+    const [connection] = getNamedConnectionApis(options.name)
+    store.devtools.cleanup()
+
+    expect(connection.unsubscribe).toHaveBeenCalledTimes(1)
+  })
+
+  it('should remove store from tracked connection after cleanup', async () => {
+    const options = {
+      name: 'test-store-name',
+      store: 'test-store-id',
+      enabled: true,
+    }
+
+    const store1 = createStore(devtools(() => ({ count: 0 }), options))
+    store1.devtools.cleanup()
+    const store2 = createStore(devtools(() => ({ count: 0 }), options))
+
+    const [connection] = getNamedConnectionApis(options.name)
+
+    store2.setState({ count: 15 }, false, 'updateCount')
+    expect(connection.send).toHaveBeenLastCalledWith(
+      { type: `${options.store}/updateCount` },
+      { [options.store]: { count: 15 } },
+    )
+
+    store1.setState({ count: 20 }, false, 'ignoredAction')
+    expect(connection.send).not.toHaveBeenLastCalledWith(
+      { type: `${options.store}/ignoredAction` },
+      expect.anything(),
+    )
+  })
+})
+
+describe('actionsDenylist', () => {
+  it('should pass actionsDenylist option to Redux DevTools', async () => {
+    const options = {
+      name: 'test-filter',
+      enabled: true,
+      actionsDenylist: ['secret.*'],
+    }
+
+    createStore(devtools(() => ({ count: 0 }), options))
+
+    // Verify that actionsDenylist was passed to the connect call
+    const extensionConnector = (window as any).__REDUX_DEVTOOLS_EXTENSION__
+    expect(extensionConnector.connect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionsDenylist: ['secret.*'],
+      }),
+    )
   })
 })

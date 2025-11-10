@@ -13,6 +13,10 @@ jobs:
       fail-fast: false
       matrix:
         typescript:
+          - 5.9.2
+          - 5.8.3
+          - 5.7.3
+          - 5.6.3
           - 5.5.4
           - 5.4.5
           - 5.3.3
@@ -25,9 +29,9 @@ jobs:
           - 4.6.4
           - 4.5.5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 'lts/*'
           cache: 'pnpm'

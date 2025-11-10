@@ -1,8 +1,6 @@
 // 导入 Three.js 核心组件
 import { Mesh, PlaneGeometry, Group, Vector3, MathUtils } from 'three'
-// 导入 React 相关 hooks
-import { memo, useRef, useState, useLayoutEffect } from 'react'
-// 导入 React Three Fiber 相关组件和工具
+import { useRef, useState, useLayoutEffect } from 'react'
 import { createRoot, events, extend, useFrame } from '@react-three/fiber'
 // 导入 React Three Fiber 的辅助组件
 import { Plane, useAspect, useTexture } from '@react-three/drei'
@@ -181,60 +179,88 @@ function Effects() {
   )
 }
 
-// 主场景组件
-export default function Scene() {
+function FallbackScene() {
   return (
-    <Canvas>
+    <div
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#010101',
+      }}
+    >
+      <img
+        src="/ogimage.jpg"
+        alt="Zustand Bear"
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+        }}
+      />
+    </div>
+  )
+}
+
+export default function Scene() {
+  const [error, setError] = useState(null)
+
+  if (error) {
+    return <FallbackScene />
+  }
+
+  return (
+    <Canvas onError={setError}>
       <Experience />
       <Effects />
     </Canvas>
   )
 }
 
-// Canvas 组件，负责设置 Three.js 场景
-function Canvas({ children }) {
-  // 扩展 Three.js 组件
+function Canvas({ children, onError }) {
   extend({ Mesh, PlaneGeometry, Group })
   const canvas = useRef(null)
   const root = useRef(null)
 
   useLayoutEffect(() => {
-    // 初始化 Three.js 根节点
-    if (!root.current) {
-      root.current = createRoot(canvas.current).configure({
-        events,
-        orthographic: true,  // 使用正交相机
-        gl: { antialias: false },
-        camera: { zoom: 5, position: [0, 0, 200], far: 300, near: 50 },
-        onCreated: (state) => {
-          // 连接事件系统到 DOM
-          state.events.connect(document.getElementById('root'))
-          // 配置鼠标事件计算
-          state.setEvents({
-            compute: (event, state) => {
-              // 计算鼠标位置（归一化坐标）
-              state.pointer.set(
-                (event.clientX / state.size.width) * 2 - 1,
-                -(event.clientY / state.size.height) * 2 + 1,
-              )
-              // 更新射线投射器
-              state.raycaster.setFromCamera(state.pointer, state.camera)
-            },
-          })
-        },
-      })
+    try {
+      if (!root.current) {
+        root.current = createRoot(canvas.current).configure({
+          events,
+          orthographic: true,
+          gl: { antialias: false },
+          camera: { zoom: 5, position: [0, 0, 200], far: 300, near: 50 },
+          onCreated: (state) => {
+            state.events.connect(document.getElementById('root'))
+            state.setEvents({
+              compute: (event, state) => {
+                state.pointer.set(
+                  (event.clientX / state.size.width) * 2 - 1,
+                  -(event.clientY / state.size.height) * 2 + 1,
+                )
+                state.raycaster.setFromCamera(state.pointer, state.camera)
+              },
+            })
+          },
+        })
+      }
+      const resize = () =>
+        root.current.configure({
+          width: window.innerWidth,
+          height: window.innerHeight,
+        })
+      window.addEventListener('resize', resize)
+      root.current.render(children)
+      return () => window.removeEventListener('resize', resize)
+    } catch (e) {
+      onError?.(e)
     }
-
-    // 处理窗口大小变化
-    const resize = () =>
-      root.current.configure({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      })
-    window.addEventListener('resize', resize)
-    root.current.render(children)
-    return () => window.removeEventListener('resize', resize)
-  }, [children])
+  }, [children, onError])
 
   return (
     <canvas

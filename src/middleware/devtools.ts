@@ -1,4 +1,5 @@
 import type {} from '@redux-devtools/extension'
+
 import type {
   StateCreator,
   StoreApi,
@@ -65,6 +66,9 @@ type StoreDevtools<S> = S extends {
   ? {
       setState(...args: [...args: TakeTwo<Sa1>, action?: Action]): Sr1
       setState(...args: [...args: TakeTwo<Sa2>, action?: Action]): Sr2
+      devtools: {
+        cleanup: () => void
+      }
     }
   : never
 
@@ -109,6 +113,7 @@ type ConnectionInformation = {
   connection: Connection
   stores: Record<StoreName, StoreInformation>
 }
+
 const trackedConnections: Map<ConnectionName, ConnectionInformation> = new Map()
 
 const getTrackedConnectionState = (
@@ -146,6 +151,30 @@ const extractConnectionInformation = (
   return { type: 'tracked' as const, store, ...newConnection }
 }
 
+const removeStoreFromTrackedConnections = (
+  name: string | undefined,
+  store: string | undefined,
+) => {
+  if (store === undefined) return
+  const connectionInfo = trackedConnections.get(name)
+  if (!connectionInfo) return
+  delete connectionInfo.stores[store]
+  if (Object.keys(connectionInfo.stores).length === 0) {
+    trackedConnections.delete(name)
+  }
+}
+
+const findCallerName = (stack: string | undefined) => {
+  if (!stack) return undefined
+  const traceLines = stack.split('\n')
+  const apiSetStateLineIndex = traceLines.findIndex((traceLine) =>
+    traceLine.includes('api.setState'),
+  )
+  if (apiSetStateLineIndex < 0) return undefined
+  const callerLine = traceLines[apiSetStateLineIndex + 1]?.trim() || ''
+  return /.+ (.+) .+/.exec(callerLine)?.[1]
+}
+
 const devtoolsImpl: DevtoolsImpl =
   (fn, devtoolsOptions = {}) =>
   (set, get, api) => {
@@ -180,7 +209,12 @@ const devtoolsImpl: DevtoolsImpl =
       if (!isRecording) return r
       const action: { type: string } =
         nameOrAction === undefined
-          ? { type: anonymousActionType || 'anonymous' }
+          ? {
+              type:
+                anonymousActionType ||
+                findCallerName(new Error().stack) ||
+                'anonymous',
+            }
           : typeof nameOrAction === 'string'
             ? { type: nameOrAction }
             : nameOrAction
@@ -200,6 +234,17 @@ const devtoolsImpl: DevtoolsImpl =
       )
       return r
     }) as NamedSet<S>
+    ;(api as StoreApi<S> & StoreDevtools<S>).devtools = {
+      cleanup: () => {
+        if (
+          connection &&
+          typeof (connection as any).unsubscribe === 'function'
+        ) {
+          ;(connection as any).unsubscribe()
+        }
+        removeStoreFromTrackedConnections(options.name, store)
+      },
+    }
 
     const setStateFromDevtools: StoreApi<S>['setState'] = (...a) => {
       const originalIsRecording = isRecording

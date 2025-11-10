@@ -1,5 +1,4 @@
 /* eslint @typescript-eslint/no-unused-expressions: off */ // FIXME
-/* eslint react-compiler/react-compiler: off */
 
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { create } from 'zustand'

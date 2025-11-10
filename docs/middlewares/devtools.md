@@ -9,6 +9,10 @@ nav: 205
 `devtools` middleware lets you use [Redux DevTools Extension](https://github.com/reduxjs/redux-devtools)
 without Redux. Read more about the benefits of using [Redux DevTools for debugging](https://redux.js.org/style-guide/#use-the-redux-devtools-extension-for-debugging).
 
+> [!IMPORTANT]
+> In order to use `devtools` from `zustand/middleware` you need to install
+> `@redux-devtools/extension` library.
+
 ```js
 const nextStateCreatorFn = devtools(stateCreatorFn, devtoolsOptions)
 ```
@@ -20,6 +24,8 @@ const nextStateCreatorFn = devtools(stateCreatorFn, devtoolsOptions)
 - [Usage](#usage)
   - [Debugging a store](#debugging-a-store)
   - [Debugging a Slices pattern based store](#debugging-a-slices-pattern-based-store)
+  - [Filtering actions with actionsDenylist](#filtering-actions-with-actionsdenylist)
+  - [Cleanup](#cleanup)
 - [Troubleshooting](#troubleshooting)
   - [Only one store is displayed](#only-one-store-is-displayed)
   - [Action names are labeled as 'anonymous'](#all-action-names-are-labeled-as-anonymous)
@@ -53,9 +59,12 @@ devtools<T>(stateCreatorFn: StateCreator<T, [], []>, devtoolsOptions?: DevtoolsO
   - **optional** `enabled`: Defaults to `true` when is on development mode, and defaults to `false`
     when is on production mode. Enables or disables the Redux DevTools integration
     for this store.
-  - **optional** `anonymousActionType`: Defaults to `anonymous`. A string to use as the action type
-    for anonymous mutations in the Redux DevTools.
+  - **optional** `anonymousActionType`: Defaults to the inferred action type or `anonymous` if
+    unavailable. A string to use as the action type for anonymous mutations in the Redux DevTools.
   - **optional** `store`: A custom identifier for the store in the Redux DevTools.
+  - **optional** `actionsDenylist`: A string or array of strings (regex patterns) that specify which
+    actions should be filtered out from Redux DevTools. This option is passed directly to Redux DevTools
+    for filtering. For example, `['secret.*']` will filter out all actions starting with "secret".
 
 #### Returns
 
@@ -151,6 +160,82 @@ const useJungleStore = create<JungleStore>()(
   })),
 )
 ```
+
+### Filtering actions with actionsDenylist
+
+You can filter out specific actions from Redux DevTools using the `actionsDenylist` option. This is useful for hiding internal or sensitive actions from the DevTools timeline.
+
+```ts
+import { create } from 'zustand'
+import { devtools } from 'zustand/middleware'
+
+type Store = {
+  user: string | null
+  token: string | null
+  login: (user: string, token: string) => void
+  logout: () => void
+  updateData: () => void
+}
+
+const useStore = create<Store>()(
+  devtools(
+    (set) => ({
+      user: null,
+      token: null,
+      login: (user, token) => set({ user, token }, undefined, 'auth/login'),
+      logout: () => set({ user: null, token: null }, undefined, 'auth/logout'),
+      updateData: () =>
+        set({ user: 'updated' }, undefined, 'internal/updateData'),
+    }),
+    {
+      name: 'AuthStore',
+      // Filter out actions matching these regex patterns
+      actionsDenylist: ['internal/.*'], // Hides all 'internal/*' actions
+    },
+  ),
+)
+```
+
+You can also use a single regex string:
+
+```ts
+const useStore = create<Store>()(
+  devtools(
+    (set) => ({
+      // ... state and actions
+    }),
+    {
+      name: 'MyStore',
+      actionsDenylist: 'secret.*', // Hides all actions starting with 'secret'
+    },
+  ),
+)
+```
+
+> [!NOTE]
+> The `actionsDenylist` option uses regex pattern matching and is handled directly by Redux DevTools Extension.
+> All actions are still sent to DevTools, but matching actions are filtered from the display.
+
+### Cleanup
+
+When a store is no longer needed, you can clean up the Redux DevTools connection by calling the `cleanup` method on the store:
+
+```ts
+import { create } from 'zustand'
+import { devtools } from 'zustand/middleware'
+
+const useStore = create(
+  devtools((set) => ({
+    count: 0,
+    increment: () => set((state) => ({ count: state.count + 1 })),
+  })),
+)
+
+// When you're done with the store, clean it up
+useStore.devtools.cleanup()
+```
+
+This is particularly useful in applications that wrap store in context or create multiple stores dynamically.
 
 ## Troubleshooting
 
